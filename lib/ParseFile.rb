@@ -1,8 +1,8 @@
 class ParseFile
-    attr_accessor :data
+    attr_accessor :response
     
     def initialize(tsv_str)
-        @data = parseAsFile(tsv_str)
+        @response = parseAsFile(tsv_str)
     end
 
 
@@ -10,54 +10,55 @@ class ParseFile
 
     def getItemFromRow(row, header, columnName)
         return row[header.find_index{|column| column == columnName}]
-    end
+    end    
 
-    def orderDateToISODate(orderDate)
+    def getPriceFromSales(rows, header)
         begin
-            return Date.new(orderDate)
+            return getItemFromRow(rows, header, 'Sales').to_f
         rescue => exception
-            return ""
+            return 0
         end
     end
     
     def getProductUrlFromLineItem(rows, header)
         begin
-            baseUrl = 'https://www.foo.com';
-            category = getItemFromRow(fields, header, 'Category');
-            subCategory = getItemFromRow(fields, header, 'Sub-Category');
-            productId = getItemFromRow(fields, header, 'Product ID');
+            baseUrl = 'https://www.foo.com'
+            category = getItemFromRow(rows, header, 'Category')
+            subCategory = getItemFromRow(rows, header, 'Sub-Category')
+            productId = getItemFromRow(rows, header, 'Product ID')
 
-            return [baseUrl, category, subCategory, productId].join('/');
+            return [baseUrl, category, subCategory, productId].join('/')
         rescue
             return ""
         end
     end
 
-    def getPriceFromSales(rows, header)
-        begin
-            return getItemFromRow(fields, header, 'Sales').to_f
-        rescue => exception
-            return exception
-        end
+    def getLineItem(row, header)
+        return {
+            product_url: getProductUrlFromLineItem(row, header),
+            revenue: getPriceFromSales(row, header)
+        }
     end
-    
+
+    def getDateFromString(dateString)
+        date = dateString.split('/');
+        date = date[2] + date[1..]
+        
+        Time.utc(date[0], date[1], date[2]).strftime '%Y-%m-%d %H:%M:%S'
+    end
+
     def getISOOrderDateIfAfter(row, header, dateString)
         begin
-            orderDate = getItemFromRow(row, header, 'Order Date')
+            orderDate = getDateFromString(getItemFromRow(row, header, 'Order Date'))
+            dString = getDateFromString(dateString)
             
-            if orderDate && (Date.new(orderDate) > Date.new(dateString))
-                return orderDateToISODate(orderDate)
+            if orderDate && (orderDate > dString)
+                return orderDate
             end
+            return nil
         rescue
             return nil
         end
-    end
-
-    def getLineItem(row, header)
-        return {
-            product_url: getProductUrlFromLineItem(rows, header),
-            revenue: getPriceFromSales(rows, header)
-        };
     end
 
     def convertToOrder(row, header, rowOrderId, line_item)
@@ -70,14 +71,12 @@ class ParseFile
         order
     end
 
-    def createOrMergeOrders(lines, header)
+    def createOrMergeOrders(rows, header)
         shopData = {}
         
-        lines.each do |row|
+        rows.each do |row|
             customerName = getItemFromRow(row, header, 'Customer Name')
-
             rowOrderId = getItemFromRow(row, header, 'Order ID')
-            
             line_item = getLineItem(row, header)
             order = convertToOrder(row, header, rowOrderId, line_item)
 
@@ -99,22 +98,45 @@ class ParseFile
         shopData
     end
 
-    def getOrderData(lines, header)
-        lines = lines[1..]
+    def getOrderData(lines, header, errors)
+        rows = lines[1..]
             .map{|row| row.split('\t')}
             .select{|row| getISOOrderDateIfAfter(row, header, '7/31/2016')}
 
-        shopData = createOrMergeOrders(lines, header)
+        shopData = createOrMergeOrders(rows, header)
             
         shopData
     end
 
     def parseAsFile(tsv_str)
         errors = []
-        lines = tsv_str.split('\n')
+        esc_tsv = tsv_str.chomp.dump[1...-1]
+        lines = esc_tsv.split('\n')
         header = lines[0].split('\t')
-        shopData = getOrderData(lines, header)
+        shopData = getOrderData(lines, header, errors)
         
-        shopData
+        return {header: header}
     end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+# begin
+#     lines = tsv_str.split('\n')
+#     header = lines[0].split('\t')
+#     shopData = getOrderData(lines, header, errors)
+    
+#     shopData
+# rescue => exception
+#     errors << exception
+#     return {data: {}, errors: errors}
+# end

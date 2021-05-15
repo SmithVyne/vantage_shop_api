@@ -1,12 +1,10 @@
-require 'read';
+require_dependency 'ParseFile'
 
 class ResponsesController < ApplicationController
-  # before_action :set_response, only: [:show]
-
   def create
     # res = {response: {hi: "tsv_str"}}
-    # jsonShopData = Response.parseAsFile(params[:tsv])
-    # @response = Response.create({response: jsonShopData})
+    jsonShopData = ParseFile.new(params[:tsv]).response
+    render json: jsonShopData, status: :created
 
     # unless jsonShopData.errors.count
     #   render json: jsonShopData.errors, status: :unprocessable_entity
@@ -14,13 +12,7 @@ class ResponsesController < ApplicationController
     #   render jsonShopData: jsonShopData, status: :created
     # end
     
-    res = Read.new("What's up")
-    render json: res, status: :created
+    # res = Read.new("What's up").message
+    # render json: res, status: :created
   end
-
-  private
-    # Use callbacks to share common setup or constraints between actions.
-    # def set_response
-    #   @response = Response.find_by(params[:id])
-    # end
 end
