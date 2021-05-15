@@ -41,10 +41,10 @@ class ParseFile
     end
 
     def getDateFromString(dateString)
-        date = dateString.split('/');
-        date = date[2] + date[1..]
-        
-        Time.utc(date[0], date[1], date[2]).strftime '%Y-%m-%d %H:%M:%S'
+        date = dateString.split('/')
+        year = date[2].to_i % 2000 + 2000 
+
+        Time.utc(year, date[0], date[1]).strftime '%Y-%m-%d %H:%M:%S'
     end
 
     def getISOOrderDateIfAfter(row, header, dateString)
@@ -56,8 +56,8 @@ class ParseFile
                 return orderDate
             end
             return nil
-        rescue
-            return nil
+        rescue =>e
+            return e
         end
     end
 
@@ -82,7 +82,6 @@ class ParseFile
 
             if shopData[customerName]
                 orderIndex = shopData[customerName]["orders"].find_index{|order| order.order_id == rowOrderId}
-
                 if orderIndex
                     shopData[customerName]["orders"][orderIndex]["line_items"] << line_item
                 else
@@ -115,28 +114,6 @@ class ParseFile
         header = lines[0].split('\t')
         shopData = getOrderData(lines, header, errors)
         
-        return {header: header}
+        return shopData
     end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-# begin
-#     lines = tsv_str.split('\n')
-#     header = lines[0].split('\t')
-#     shopData = getOrderData(lines, header, errors)
-    
-#     shopData
-# rescue => exception
-#     errors << exception
-#     return {data: {}, errors: errors}
-# end
