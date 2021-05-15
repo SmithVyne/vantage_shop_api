@@ -1,23 +1,21 @@
+require 'read';
+
 class ResponsesController < ApplicationController
   # before_action :set_response, only: [:show]
 
-  # # GET /responses/1
-  # def show
-  #   render json: @response
-  # end
-
-  # POST /responses
   def create
-    jsonShopData = Response.parseAsFile(params[:tsv])
-    @response = Response.create({response: jsonShopData})
+    # res = {response: {hi: "tsv_str"}}
+    # jsonShopData = Response.parseAsFile(params[:tsv])
+    # @response = Response.create({response: jsonShopData})
 
-    if jsonShopData
-      render json: jsonShopData, status: :created
-    else
-      render json: jsonShopData.errors, status: :unprocessable_entity
-    end
-
+    # unless jsonShopData.errors.count
+    #   render json: jsonShopData.errors, status: :unprocessable_entity
+    # else
+    #   render jsonShopData: jsonShopData, status: :created
+    # end
     
+    res = Read.new("What's up")
+    render json: res, status: :created
   end
 
   private

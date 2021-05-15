@@ -1,10 +1,18 @@
-class Response < ApplicationRecord
+class ParseFile
+    attr_accessor :data
+    
+    def initialize(tsv_str)
+        @data = parseAsFile(tsv_str)
+    end
 
-    def self.getItemFromRow(row, header, columnName)
+
+    private
+
+    def getItemFromRow(row, header, columnName)
         return row[header.find_index{|column| column == columnName}]
     end
 
-    def self.orderDateToISODate(orderDate)
+    def orderDateToISODate(orderDate)
         begin
             return Date.new(orderDate)
         rescue => exception
@@ -12,12 +20,12 @@ class Response < ApplicationRecord
         end
     end
     
-    def self.getProductUrlFromLineItem(rows, header)
+    def getProductUrlFromLineItem(rows, header)
         begin
             baseUrl = 'https://www.foo.com';
-            category = self.getItemFromRow(fields, header, 'Category');
-            subCategory = self.getItemFromRow(fields, header, 'Sub-Category');
-            productId = self.getItemFromRow(fields, header, 'Product ID');
+            category = getItemFromRow(fields, header, 'Category');
+            subCategory = getItemFromRow(fields, header, 'Sub-Category');
+            productId = getItemFromRow(fields, header, 'Product ID');
 
             return [baseUrl, category, subCategory, productId].join('/');
         rescue
@@ -25,53 +33,53 @@ class Response < ApplicationRecord
         end
     end
 
-    def self.getPriceFromSales(rows, header)
+    def getPriceFromSales(rows, header)
         begin
-            return self.getItemFromRow(fields, header, 'Sales').to_f
+            return getItemFromRow(fields, header, 'Sales').to_f
         rescue => exception
             return exception
         end
     end
     
-    def self.getISOOrderDateIfAfter(row, header, dateString)
+    def getISOOrderDateIfAfter(row, header, dateString)
         begin
-            orderDate = self.getItemFromRow(row, header, 'Order Date')
+            orderDate = getItemFromRow(row, header, 'Order Date')
             
             if orderDate && (Date.new(orderDate) > Date.new(dateString))
-                return self.orderDateToISODate(orderDate)
+                return orderDateToISODate(orderDate)
             end
         rescue
             return nil
         end
     end
 
-    def self.getLineItem(row, header)
+    def getLineItem(row, header)
         return {
-            product_url: self.getProductUrlFromLineItem(rows, header),
-            revenue: self.getPriceFromSales(rows, header)
+            product_url: getProductUrlFromLineItem(rows, header),
+            revenue: getPriceFromSales(rows, header)
         };
     end
 
-    def self.convertToOrder(row, header, rowOrderId, line_item)
+    def convertToOrder(row, header, rowOrderId, line_item)
         order = {
             order_id: rowOrderId, 
-            order_date:  self.getISOOrderDateIfAfter(row, header, '7/31/2016'), 
+            order_date:  getISOOrderDateIfAfter(row, header, '7/31/2016'), 
             line_items: [line_item]
         }
 
         order
     end
 
-    def self.createOrMergeOrders(lines, header)
+    def createOrMergeOrders(lines, header)
         shopData = {}
         
         lines.each do |row|
-            customerName = self.getItemFromRow(row, header, 'Customer Name')
+            customerName = getItemFromRow(row, header, 'Customer Name')
 
-            rowOrderId = self.getItemFromRow(row, header, 'Order ID')
+            rowOrderId = getItemFromRow(row, header, 'Order ID')
             
-            line_item = self.getLineItem(row, header)
-            order = self.convertToOrder(row, header, rowOrderId, line_item)
+            line_item = getLineItem(row, header)
+            order = convertToOrder(row, header, rowOrderId, line_item)
 
             if shopData[customerName]
                 orderIndex = shopData[customerName]["orders"].find_index{|order| order.order_id == rowOrderId}
@@ -91,21 +99,21 @@ class Response < ApplicationRecord
         shopData
     end
 
-    def self.getOrderData(lines, header)
+    def getOrderData(lines, header)
         lines = lines[1..]
             .map{|row| row.split('\t')}
-            .select{|row| self.getISOOrderDateIfAfter(row, header, '7/31/2016')}
+            .select{|row| getISOOrderDateIfAfter(row, header, '7/31/2016')}
 
-        shopData = self.createOrMergeOrders(lines, header)
+        shopData = createOrMergeOrders(lines, header)
             
         shopData
     end
 
-    def self.parseAsFile(tsv_str)
+    def parseAsFile(tsv_str)
         errors = []
         lines = tsv_str.split('\n')
         header = lines[0].split('\t')
-        shopData = self.getOrderData(lines, header)
+        shopData = getOrderData(lines, header)
         
         shopData
     end
