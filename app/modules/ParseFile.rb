@@ -57,7 +57,7 @@ class ParseFile
             end
             return nil
         rescue => e
-            return e
+            return nil
         end
     end
 
@@ -73,32 +73,36 @@ class ParseFile
 
     def createOrMergeOrders(rows, header)
         shopData = {}
-        arr = []
+        errors = []
         
-        rows.each do |row|
-            customerName = getItemFromRow(row, header, 'Customer Name')
-            rowOrderId = getItemFromRow(row, header, 'Order ID')
-            line_item = getLineItem(row, header)
-            order = convertToOrder(row, header, rowOrderId, line_item)
-            
-            if shopData[customerName]
-                orderIndex = shopData[customerName][:orders].find_index{|order| order[:order_id] == rowOrderId}
-                if orderIndex
-                    shopData[customerName][:orders][orderIndex][:line_items] << line_item
+        rows.each_with_index do |row, index|
+            begin
+                customerName = getItemFromRow(row, header, 'Customer Name')
+                rowOrderId = getItemFromRow(row, header, 'Order ID')
+                line_item = getLineItem(row, header)
+                order = convertToOrder(row, header, rowOrderId, line_item)
+
+                if shopData[customerName]
+                    orderIndex = shopData[customerName][:orders].find_index{|order| order[:order_id] == rowOrderId}
+                    if orderIndex
+                        shopData[customerName][:orders][orderIndex][:line_items] << line_item
+                    else
+                        shopData[customerName][:orders] << order
+                    end
                 else
-                    shopData[customerName][:orders] << order
+                    shopData[customerName] = {
+                        orders: [order]
+                    }
                 end
-            else
-                shopData[customerName] = {
-                    orders: [order]
-                }
+            rescue => err
+                errors << "Error parsing row #{index} :>>  #{err}"
             end
         end
 
-        shopData
+        {shopData: shopData, errors: errors}
     end
 
-    def getOrderData(lines, header, errors)
+    def getOrderData(lines, header)
         rows = lines[1..]
             .map{|row| row.split('\t')}
             .select{|row| getISOOrderDateIfAfter(row, header, '7/31/2016')}
@@ -109,12 +113,15 @@ class ParseFile
     end
 
     def parseAsFile(tsv_str)
-        errors = []
-        esc_tsv = tsv_str.chomp.dump[1...-1]
-        lines = esc_tsv.split('\n')
-        header = lines[0].split('\t')
-        shopData = getOrderData(lines, header, errors)
-        
-        shopData
+        begin
+            esc_tsv = tsv_str.chomp.dump[1...-1]
+            lines = esc_tsv.split('\n')
+            header = lines[0].split('\t')
+            shopData = getOrderData(lines, header)
+            
+            shopData
+        rescue => err
+            {shopData: {}, errors: ["Error parsing tsv file: #{err}"]}
+        end
     end
 end
