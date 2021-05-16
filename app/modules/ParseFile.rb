@@ -56,7 +56,7 @@ class ParseFile
                 return orderDate
             end
             return nil
-        rescue =>e
+        rescue => e
             return e
         end
     end
@@ -73,19 +73,20 @@ class ParseFile
 
     def createOrMergeOrders(rows, header)
         shopData = {}
+        arr = []
         
         rows.each do |row|
             customerName = getItemFromRow(row, header, 'Customer Name')
             rowOrderId = getItemFromRow(row, header, 'Order ID')
             line_item = getLineItem(row, header)
             order = convertToOrder(row, header, rowOrderId, line_item)
-
+            
             if shopData[customerName]
-                orderIndex = shopData[customerName]["orders"].find_index{|order| order.order_id == rowOrderId}
+                orderIndex = shopData[customerName][:orders].find_index{|order| order[:order_id] == rowOrderId}
                 if orderIndex
-                    shopData[customerName]["orders"][orderIndex]["line_items"] << line_item
+                    shopData[customerName][:orders][orderIndex][:line_items] << line_item
                 else
-                    shopData[customerName]["orders"] << order
+                    shopData[customerName][:orders] << order
                 end
             else
                 shopData[customerName] = {
@@ -114,6 +115,6 @@ class ParseFile
         header = lines[0].split('\t')
         shopData = getOrderData(lines, header, errors)
         
-        return shopData
+        shopData
     end
 end
