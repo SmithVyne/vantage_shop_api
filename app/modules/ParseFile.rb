@@ -3,6 +3,7 @@ class ParseFile
     
     def initialize(tsv_str)
         @response = parseAsFile(tsv_str)
+        @errors = []
     end
 
 
@@ -95,7 +96,7 @@ class ParseFile
                     }
                 end
             rescue => err
-                errors << "Error parsing row #{index} :>>  #{err}"
+                errors << "Error parsing row #{index+1} :>>  #{err}"
             end
         end
 
@@ -121,7 +122,7 @@ class ParseFile
             
             shopData
         rescue => err
-            {shopData: {}, errors: ["Error parsing tsv file: #{err}"]}
+            {shopData: {}, errors: ["Error parsing tsv file: #{err}"], solutions: ["Check that you have a parameter with name tsv in your request", "Check that your tsv parameter is of type String"]}
         end
     end
 end

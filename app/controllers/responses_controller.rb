@@ -1,12 +1,18 @@
 class ResponsesController < ApplicationController
   def create
-    jsonShopData = ParseFile.new(params[:tsv]).response
-    render json: jsonShopData, status: jsonShopData[:errors].count ? :unprocessable_entity : :created
+    @response = Response.find_by(uuid: params[:uuid])
+    if @response
+      jsonShopData = ParseFile.new(@response.tsv).response
+      render json: {data: jsonShopData, tsv: @response.tsv}
+    else
+      jsonShopData = ParseFile.new(params[:tsv]).response
+      @response = Response.create(response_params)
+      render json: {data: jsonShopData, tsv: params[:tsv]}, status: jsonShopData[:errors].count > 0  ? :unprocessable_entity : :created
+    end
+  end
 
-    # unless jsonShopData[:errors].count
-    #   render json: jsonShopData.errors, status: :unprocessable_entity
-    # else
-    #   render jsonShopData: jsonShopData, status: :created
-    # end
+  private
+  def response_params
+    params.permit(:tsv, :uuid)
   end
 end
