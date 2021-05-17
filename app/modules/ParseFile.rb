@@ -1,8 +1,10 @@
 class ParseFile
-    attr_accessor :response
+    attr_reader :response
     
     def initialize(tsv_str)
-        @response = parseAsFile(tsv_str)
+        @errors = []
+        shopData = parseAsFile(tsv_str)
+        @response = {shopData: shopData, errors: @errors}
     end
 
 
@@ -57,6 +59,7 @@ class ParseFile
             end
             return nil
         rescue => e
+            @errors << e
             return nil
         end
     end
@@ -73,12 +76,15 @@ class ParseFile
 
     def createOrMergeOrders(rows, header)
         shopData = {}
-        errors = []
         
         rows.each_with_index do |row, index|
             begin
                 customerName = getItemFromRow(row, header, 'Customer Name')
                 rowOrderId = getItemFromRow(row, header, 'Order ID')
+
+                    raise "Customer Name does not exist" unless customerName[0]
+                    raise "Row Order ID does not exist" unless rowOrderId[0]
+                
                 line_item = getLineItem(row, header)
                 order = convertToOrder(row, header, rowOrderId, line_item)
 
@@ -95,11 +101,11 @@ class ParseFile
                     }
                 end
             rescue => err
-                errors << "Error parsing row #{index+1} :>>  #{err}"
+                @errors << "Error parsing row #{index+1} :>>  #{err}"
             end
         end
 
-        {shopData: shopData, errors: errors}
+        shopData
     end
 
     def getOrderData(lines, header)
@@ -117,11 +123,13 @@ class ParseFile
             esc_tsv = tsv_str.chomp.dump[1...-1]
             lines = esc_tsv.split('\n')
             header = lines[0].split('\t')
+            raise "Invalid TSV file" unless header.count == 21
             shopData = getOrderData(lines, header)
             
             shopData
         rescue => err
-            {shopData: {}, errors: ["Error parsing tsv file: #{err}"], solutions: ["Check that you have a parameter with name tsv in your request", "Check that your tsv parameter is of type String"]}
+            @errors << "Error parsing tsv file: #{err}"
+            {}
         end
     end
 end
