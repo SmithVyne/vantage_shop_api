@@ -3,7 +3,6 @@ class ParseFile
     
     def initialize(tsv_str)
         @response = parseAsFile(tsv_str)
-        @errors = []
     end
 
 
