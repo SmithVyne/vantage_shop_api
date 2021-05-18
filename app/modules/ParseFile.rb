@@ -101,7 +101,7 @@ class ParseFile
                     }
                 end
             rescue => err
-                index = getItemFromRow(row, header, 'Row ID').to_i || index + 1
+                index = getItemFromRow(row, header, 'Row ID').empty? ? index + 1 : getItemFromRow(row, header, 'Row ID')
                 @errors << "Error parsing row #{index} :>>  #{err}"
             end
         end
