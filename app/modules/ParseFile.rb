@@ -101,7 +101,7 @@ class ParseFile
                     }
                 end
             rescue => err
-                index = getItemFromRow(row, header, 'Row ID').to_i || index + 1
+                index = getItemFromRow(row, header, 'Row ID').to_i || "#{index + 1} in tsv file"
                 @errors << "Error parsing row #{index} :>>  #{err}"
             end
         end
